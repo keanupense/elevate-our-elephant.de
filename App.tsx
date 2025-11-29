@@ -13,7 +13,7 @@ import About from "./pages/about";
 import Onboarding from "./pages/Onboarding";
 import Loading from "./pages/Loading";
 import NotFound from "./pages/NotFound";
-import Impressum from "./pages/impressum";
+import impressum from "./pages/impressum";
 import Datenschutz from "./pages/Datenschutz";
 
 function RequireAuth({ session }: { session: Session | null }) {
