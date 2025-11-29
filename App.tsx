@@ -1,5 +1,5 @@
+import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./integrations/supabase/client";
 
@@ -13,7 +13,7 @@ import About from "./pages/about";
 import Onboarding from "./pages/Onboarding";
 import Loading from "./pages/Loading";
 import NotFound from "./pages/NotFound";
-import impressum from "./pages/impressum";
+import Impressum from "./pages/impressum";  
 import Datenschutz from "./pages/Datenschutz";
 
 function RequireAuth({ session }: { session: Session | null }) {
@@ -23,7 +23,7 @@ function RequireAuth({ session }: { session: Session | null }) {
   return <Outlet />;
 }
 
-export default function App() {
+const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -40,7 +40,7 @@ export default function App() {
     );
 
     return () => {
-      subscription.subscription.unsubscribe();
+      subscription?.subscription?.unsubscribe();
     };
   }, []);
 
@@ -55,7 +55,7 @@ export default function App() {
       <Route path="/impressum" element={<Impressum />} />
       <Route path="/datenschutz" element={<Datenschutz />} />
 
-      {/* alles ab hier nur mit Login */}
+      {/* ab hier nur mit Login */}
       <Route element={<RequireAuth session={session} />}>
         <Route path="/" element={<Home />} />
         <Route path="/onboarding" element={<Onboarding />} />
@@ -65,11 +65,16 @@ export default function App() {
 
         {/* Lernpfad + Level */}
         <Route path="/topic/:topicId" element={<Roadmap />} />
-        <Route path="/topic/:topicId/level/:levelId" element={<TopicDetail />} />
+        <Route
+          path="/topic/:topicId/level/:levelId"
+          element={<TopicDetail />}
+        />
       </Route>
 
       {/* Fallback */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
-}
+};
+
+export default App;

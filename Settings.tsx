@@ -41,7 +41,7 @@ export default function Settings() {
           <Button
             variant="ghost"
             className="w-full justify-between px-2 py-3 rounded-2xl hover:bg-slate-50"
-            onClick={() => navigate("/Impressum")}
+            onClick={() => navigate("/impressum")}
           >
             <span className="flex items-center gap-3">
               <FileText className="w-5 h-5 text-primary" />
