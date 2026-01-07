@@ -73,7 +73,7 @@ export default function About() {
             <p className="text-xs text-muted-foreground">Kontoinhaber: Keanu Pense</p>
             <p className="text-xs text-muted-foreground">IBAN:</p>
             <p className="font-mono text-sm">
-              DE15 1005 0000 1070 5034 24
+              DE15 1005 1400 8374 8626 29
             </p>
           </div>
         </section>

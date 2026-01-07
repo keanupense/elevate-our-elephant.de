@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { addCompletedLevel, addProgressEntry } from "@/lib/progressStorage";
 import elephantIcon from "@/assets/elephant-icon.png";
 
 interface Question {
@@ -516,6 +516,15 @@ export default function TopicDetail() {
   const [earnedXP, setEarnedXP] = useState(0);
 
   useEffect(() => {
+    if (!showXPScreen) return;
+    const topicKey = topicId || "medienkritik";
+    const timer = window.setTimeout(() => {
+      navigate(`/topic/${topicKey}`);
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [showXPScreen, navigate, topicId]);
+
+  useEffect(() => {
     // Map route topic IDs to quizData keys
     const topicKeyMap: Record<string, string> = {
       history: "geschichte",
@@ -622,67 +631,23 @@ export default function TopicDetail() {
         setEarnedXP(xp);
         setShowXPScreen(true);
 
-        // 1) Fortschritt in Supabase speichern
+        // 1) Fortschritt lokal speichern
         try {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-
-          if (user) {
-            const currentLevel = parseInt(levelId || "1");
-            const { error } = await supabase.from("level_progress").upsert(
-              {
-                user_id: user.id,
-                topic_id: topicId || "medienkritik",
-                level_id: currentLevel,
-                xp_earned: xp,
-              },
-              {
-                onConflict: "user_id,topic_id,level_id",
-              }
-            );
-
-            if (error) throw error;
+          const topicKey = topicId || "medienkritik";
+          const levelKey = String(levelId || "1");
+          const isNewCompletion = addCompletedLevel(topicKey, levelKey);
+          if (isNewCompletion) {
+            addProgressEntry(topicKey, levelKey);
           }
         } catch (error) {
           console.error("Error saving progress:", error);
           toast({
             title: "Fehler",
-            description: "Fortschritt konnte nicht gespeichert werden.",
+            description: "Fortschritt konnte lokal nicht gespeichert werden.",
             variant: "destructive",
           });
         }
 
-        // 2) Lokalen Fortschritt in localStorage speichern,
-        //    damit die Roadmap die Farben korrekt anzeigen kann
-        try {
-          if (topicId) {
-            const storageKey = `elevate_${topicId}_completed_ids`;
-            const stored = window.localStorage.getItem(storageKey);
-
-            let ids: string[] = [];
-            if (stored) {
-              try {
-                ids = JSON.parse(stored) as string[];
-              } catch {
-                ids = [];
-              }
-            }
-
-            const levelKey = String(levelId || "1");
-            if (!ids.includes(levelKey)) {
-              ids.push(levelKey);
-              window.localStorage.setItem(storageKey, JSON.stringify(ids));
-            }
-          }
-        } catch (err) {
-          console.warn("Konnte lokalen Fortschritt nicht speichern:", err);
-        }
-
-        // 3) Zur passenden Roadmap zurück (kein 404 mehr)
-        setTimeout(() => {
-          navigate(`/topic/${topicId || "medienkritik"}`);
-        }, 2500);
       }
     }
   };

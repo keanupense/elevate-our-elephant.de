@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/BottomNav";
 import {
   Flame,
   CalendarDays,
-  LogOut,
   User2,
   Settings2,
   UserPlus,
@@ -15,6 +13,7 @@ import {
   Phone,
 } from "lucide-react";
 import elephantIcon from "@/assets/elephant-icon.png";
+import { getProgressLog } from "@/lib/progressStorage";
 
 type StreakDay = {
   dateKey: string; // "YYYY-MM-DD"
@@ -44,7 +43,7 @@ const TOPIC_META: TopicMeta[] = [
 export default function Profile() {
   const navigate = useNavigate();
 
-  const [displayName, setDisplayName] = useState<string>("");
+  const [displayName] = useState<string>("Elevate Nutzer:in");
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [streakDays, setStreakDays] = useState<StreakDay[]>([]);
@@ -70,54 +69,27 @@ export default function Profile() {
 
   // ---------- Daten laden ----------
   useEffect(() => {
-    const loadProfile = async () => {
+    const loadProfile = () => {
       try {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError) throw userError;
-
-        const user = userData.user;
-        if (!user) {
-          navigate("/auth");
-          return;
-        }
-
-        // Name aus Metadata oder E-Mail ableiten
-        const metaName = (user.user_metadata as any)?.name as
-          | string
-          | undefined;
-        const fallbackName =
-          metaName || user.email?.split("@")[0] || "Elevate Nutzer:in";
-        setDisplayName(fallbackName);
-
-        // Fortschritt laden
-        const { data: progressData, error: progressError } = await supabase
-          .from("level_progress")
-          .select("id, created_at, topic_id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: true });
-
-        if (progressError) throw progressError;
-
-        const completions = progressData ?? [];
+        const completions = getProgressLog().sort((a, b) => {
+          const aTime = new Date(a.completedAt).getTime();
+          const bTime = new Date(b.completedAt).getTime();
+          return aTime - bTime;
+        });
         setTotalCompletions(completions.length);
 
         const activityByDate = new Map<string, number>();
         const topicCounts = new Map<string, number>();
 
-        completions.forEach((item: any) => {
-          const created = item.created_at
-            ? new Date(item.created_at as string)
-            : null;
+        completions.forEach((item) => {
+          const created = item.completedAt ? new Date(item.completedAt) : null;
           if (!created) return;
 
           const key = formatDateKey(created);
           activityByDate.set(key, (activityByDate.get(key) ?? 0) + 1);
 
-          if (item.topic_id) {
-            topicCounts.set(
-              item.topic_id,
-              (topicCounts.get(item.topic_id) ?? 0) + 1
-            );
+          if (item.topicId) {
+            topicCounts.set(item.topicId, (topicCounts.get(item.topicId) ?? 0) + 1);
           }
         });
 
@@ -151,7 +123,7 @@ export default function Profile() {
 
         // längster Streak
         if (completions.length > 0) {
-          const firstDate = new Date(completions[0].created_at as string);
+          const firstDate = new Date(completions[0].completedAt);
           const allStreakDates = new Set(activityByDate.keys());
           let longest = 0;
           let cur = 0;
@@ -217,44 +189,7 @@ export default function Profile() {
     };
 
     loadProfile();
-  }, [navigate]);
-
-  // Realtime: neuer Level -> neu laden
-  useEffect(() => {
-    const setupRealtime = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const channel = supabase
-        .channel("level_progress_changes")
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "level_progress",
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            window.location.reload();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    };
-
-    setupRealtime();
   }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
 
   const handleOpenSettings = () => {
     navigate("/settings");
@@ -482,20 +417,6 @@ export default function Profile() {
           </Card>
         </section>
 
-        {/* Logout */}
-        <section className="animate-fade-in">
-          <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground hover:text-destructive"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-3 h-3 mr-1.5" />
-              Abmelden
-            </Button>
-          </div>
-        </section>
       </div>
 
       <BottomNav animateProfileElephant={false} />
